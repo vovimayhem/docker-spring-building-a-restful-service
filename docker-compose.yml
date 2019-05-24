@@ -2,7 +2,7 @@ version: "2.4"
 
 services:
   web:
-    image: vovimayhem/spring-demo:development
+    image: vovimayhem/spring-building-a-restful-service:development
     build:
       context: .
       target: development
@@ -10,3 +10,11 @@ services:
     - ${SPRING_DEMO_WEB_PORT:-8080}:8080
     volumes:
     - .:/usr/src
+
+  web_release:
+    image: vovimayhem/spring-building-a-restful-service:latest
+    build:
+      context: .
+      target: release
+    ports:
+    - ${SPRING_DEMO_WEB_RELEASE_PORT:-8081}:8080
