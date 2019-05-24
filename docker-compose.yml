@@ -1,0 +1,12 @@
+version: "2.4"
+
+services:
+  web:
+    image: vovimayhem/spring-demo:development
+    build:
+      context: .
+      target: development
+    ports:
+    - ${SPRING_DEMO_WEB_PORT:-8080}:8080
+    volumes:
+    - .:/usr/src
