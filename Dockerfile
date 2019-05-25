@@ -16,20 +16,31 @@ ENV HOME=/usr/src
 # Step 4: Install unzip:
 RUN yum install -y unzip
 
-# Step 5: Configure the Gradle version and the Gradle User Home:
-ENV GRADLE_VERSION=5.4.1 GRADLE_USER_HOME=/usr/local/gradle
+# Step 5: Configure the Maven version and the Maven User Home:
+ARG MAVEN_VERSION=3.6.1
+ARG MAVEN_SHA=b4880fb7a3d81edd190a029440cdf17f308621af68475a4fe976296e71ff4a4b546dd6d8a58aaafba334d309cc11e638c52808a4b0e818fc0fd544226d952544
+ARG BASE_URL=https://apache.osuosl.org/maven/maven-3/${MAVEN_VERSION}/binaries
 
-# Step 6: Add gradle executables to PATH:
-ENV PATH=/opt/gradle/gradle-$GRADLE_VERSION/bin:$PATH
+# Step 6: Configure Maven
+ENV MAVEN_HOME /usr/share/maven
+ENV MAVEN_CONFIG "/usr/local/m2"
 
-# Step 7: Install the configured Gradle version:
-RUN curl -L -o "gradle-${GRADLE_VERSION}-bin.zip" \
-  "https://services.gradle.org/distributions/gradle-${GRADLE_VERSION}-bin.zip" && \
- mkdir -p /opt/gradle /usr/local/gradle && \
- unzip -d /opt/gradle gradle-${GRADLE_VERSION}-bin.zip
+# Step 7: Install the configured maven version:
+RUN mkdir -p /usr/share/maven /usr/share/maven/ref \
+  && curl -fsSL -o /tmp/apache-maven.tar.gz ${BASE_URL}/apache-maven-${MAVEN_VERSION}-bin.tar.gz \
+  && echo "${MAVEN_SHA}  /tmp/apache-maven.tar.gz" | sha512sum -c - \
+  && tar -xzf /tmp/apache-maven.tar.gz -C /usr/share/maven --strip-components=1 \
+  && rm -f /tmp/apache-maven.tar.gz \
+  && ln -s /usr/share/maven/bin/mvn /usr/bin/mvn
+
+# STep X: Copy the POM file:
+COPY pom.xml /usr/src/
+
+# Step X+1: Download dependencies:
+RUN mvn dependencies:resolve
 
 # Step 8: Set the default command for this image:
-CMD ["gradle", "bootRun"]
+CMD ["mvn", "spring-boot:run"]
 
 # Stage II: "builder" Stage ====================================================
 
@@ -38,17 +49,11 @@ CMD ["gradle", "bootRun"]
 # Step 9: Build on top of the "development" stage image:
 FROM development AS builder
 
-# Step 10: Set the `/usr` directory as the WORKING_DIR:
-WORKDIR /usr
-
-# Step 11: Copy the `build.gradle` file:
-COPY build.gradle /usr/
-
-# Step 12: Copy the source code:
-COPY src /usr/src
+# Step 10: Copy the source code:
+COPY . /usr/src/
 
 # Step 13: Build the application:
-RUN gradle build
+RUN nvm build
 
 # Stage III: "release" Stage ===================================================
 
@@ -58,7 +63,7 @@ RUN gradle build
 FROM store/oracle/serverjre:8 AS release
 
 # Step 15: Copy the compiled JAR file into `/` from the "builder" stage image:
-COPY --from=builder /usr/build/libs/spring-building-a-restful-service-0.1.0.jar .
+COPY --from=builder /usr/src/build/libs/spring-building-a-restful-service-0.1.0.jar .
 
 # Step 16: Set the default command for the image:
 CMD ["java", "-jar", "spring-building-a-restful-service-0.1.0.jar"]
