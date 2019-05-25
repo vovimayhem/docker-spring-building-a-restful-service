@@ -37,7 +37,7 @@ RUN mkdir -p /usr/share/maven /usr/share/maven/ref \
 COPY pom.xml /usr/src/
 
 # Step X+1: Download dependencies:
-RUN mvn dependencies:resolve
+RUN mvn dependency:go-offline
 
 # Step 8: Set the default command for this image:
 CMD ["mvn", "spring-boot:run"]
@@ -53,7 +53,7 @@ FROM development AS builder
 COPY . /usr/src/
 
 # Step 13: Build the application:
-RUN nvm build
+RUN mvn package
 
 # Stage III: "release" Stage ===================================================
 
@@ -63,7 +63,7 @@ RUN nvm build
 FROM store/oracle/serverjre:8 AS release
 
 # Step 15: Copy the compiled JAR file into `/` from the "builder" stage image:
-COPY --from=builder /usr/src/build/libs/spring-building-a-restful-service-0.1.0.jar .
+COPY --from=builder /usr/src/target/gs-rest-service-0.1.0.jar .
 
 # Step 16: Set the default command for the image:
-CMD ["java", "-jar", "spring-building-a-restful-service-0.1.0.jar"]
+CMD ["java", "-jar", "gs-rest-service-0.1.0.jar"]
